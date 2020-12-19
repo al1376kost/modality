@@ -1,0 +1,6 @@
+bind_addr = ":8080"
+log_level = "debug"
+database_url = "database/modalnosti.db"
+static_path = "static"
+prod = false
+console_log = true

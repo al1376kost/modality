@@ -26,7 +26,7 @@ func (s *server) handleTextAdd() gin.HandlerFunc {
 			return
 		}
 
-		ctx.Status(http.StatusOK)
+		ctx.JSON(http.StatusOK, objText)
 
 	}
 }
@@ -110,7 +110,7 @@ func (s *server) handleCurTextGet() gin.HandlerFunc {
 
 				objText := &model.ObjectText{}
 
-				objText.ID, err = strconv.Atoi(idStr[0])
+				objText.ID, err = strconv.ParseInt(idStr[0], 10, 64)
 				if err != nil {
 					s.respondWithError(ctx, http.StatusBadRequest, err)
 					return
@@ -212,7 +212,7 @@ func (s *server) handleModalityAdd() gin.HandlerFunc {
 			return
 		}
 
-		ctx.Status(http.StatusOK)
+		ctx.JSON(http.StatusOK, modality)
 
 	}
 }
@@ -230,7 +230,7 @@ func (s *server) handleModalityGet() gin.HandlerFunc {
 
 				objModality := &model.Modality{}
 
-				objModality.ID, err = strconv.Atoi(idStr[0])
+				objModality.ID, err = strconv.ParseInt(idStr[0], 10, 64)
 				if err != nil {
 					s.respondWithError(ctx, http.StatusBadRequest, err)
 					return
@@ -250,6 +250,39 @@ func (s *server) handleModalityGet() gin.HandlerFunc {
 			s.respondWithError(ctx, http.StatusBadRequest, errors.New("absent params in request"))
 			return
 		}
+	}
+}
+
+// handleCurModalityDelete inactive current modality object
+func (s *server) handleCurModalityDelete() gin.HandlerFunc {
+
+	return func(ctx *gin.Context) {
+
+		keys := ctx.Request.URL.Query()
+
+		if len(keys) > 0 {
+			if idStr, ok := keys["id"]; ok {
+
+				modalID, err := strconv.Atoi(idStr[0])
+				if err != nil {
+					s.respondWithError(ctx, http.StatusBadRequest, err)
+					return
+				}
+
+				err = s.store.Modality().DeleteCurModality(modalID)
+				if err != nil {
+					s.respondWithError(ctx, http.StatusBadRequest, err)
+					return
+				}
+				ctx.Status(http.StatusOK)
+				return
+
+			}
+		} else {
+			s.respondWithError(ctx, http.StatusBadRequest, errors.New("absent params in request"))
+			return
+		}
+
 	}
 }
 
@@ -280,5 +313,39 @@ func (s *server) handleModalityUpdate() gin.HandlerFunc {
 
 		ctx.JSON(http.StatusOK, modalNew)
 
+	}
+}
+
+// handleModalitiesGet get all modalities from current text object
+func (s *server) handleModalitiesGet() gin.HandlerFunc {
+
+	return func(ctx *gin.Context) {
+
+		keys := ctx.Request.URL.Query()
+
+		if len(keys) > 0 {
+			if idStr, ok := keys["id"]; ok {
+
+				modalities := &model.Modalities{}
+
+				textID, err := strconv.ParseInt(idStr[0], 10, 64)
+				if err != nil {
+					s.respondWithError(ctx, http.StatusBadRequest, err)
+					return
+				}
+
+				if err = s.store.Modality().GetAllModalitiesFromTextObject(modalities, textID); err != nil {
+					s.respondWithError(ctx, http.StatusBadRequest, err)
+					return
+				}
+
+				ctx.JSON(http.StatusOK, modalities)
+				return
+
+			}
+		} else {
+			s.respondWithError(ctx, http.StatusBadRequest, errors.New("absent params in request"))
+			return
+		}
 	}
 }

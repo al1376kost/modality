@@ -65,7 +65,9 @@ func (s *server) configureRouter() {
 	s.router.PATCH("/text", s.handleCurTextUpdate())
 	s.router.PUT("/modality", s.handleModalityAdd())
 	s.router.GET("/modality", s.handleModalityGet())
+	s.router.DELETE("/modality", s.handleCurModalityDelete())
 	s.router.PATCH("/modality", s.handleModalityUpdate())
+	s.router.GET("/modalities", s.handleModalitiesGet())
 
 }
 

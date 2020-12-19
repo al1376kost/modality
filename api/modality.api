@@ -58,7 +58,7 @@ PATCH http://localhost:8080/text HTTP/1.1
 content-type: application/json
 
 {
-  "id": 1,
+  "id": 2,
   "text": "Если действие картины перенесут на землю\nДисней меня все меньше и меньше радует.",
   "url": "https://tut.by/351578",
   "lang": {
@@ -72,9 +72,9 @@ PUT http://localhost:8080/modality HTTP/1.1
 content-type: application/json
 
 {
-  "text": "картины перенесут на землю",
+  "text": "картины перенесут в землю",
   "type_id": 1,
-  "text_id": 1,
+  "text_id": 2,
   "start_symbol": 15
 }
 
@@ -88,11 +88,19 @@ PATCH http://localhost:8080/modality HTTP/1.1
 content-type: application/json
 
 {
-  "id": 1,
+  "id": 2,
   "text": "картины перенесут на юпитер",
   "type_id": 2,
   "text_id": 1,
   "start_symbol": 15
 }
+
+### delete cur modality object
+
+DELETE http://localhost:8080/modality?id=1 HTTP/1.1
+
+### get all modalities from current text object
+
+GET http://localhost:8080/modalities?id=1 HTTP/1.1
 
 ### ...

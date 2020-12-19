@@ -14,6 +14,8 @@ type ModalityRepository interface {
 	DeleteCurText(int) error
 	UpdateCurText(*model.ObjectText, *model.ObjectText) error
 	AddModality(*model.Modality) error
+	DeleteCurModality(int) error
 	GetCurModality(*model.Modality) error
 	UpdateCurModality(*model.Modality, *model.Modality) error
+	GetAllModalitiesFromTextObject(*model.Modalities, int64) error
 }

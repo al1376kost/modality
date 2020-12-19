@@ -18,7 +18,7 @@ type Types struct {
 
 // ObjectText text object for analysis
 type ObjectText struct {
-	ID       int    `json:"id"`
+	ID       int64  `json:"id"`
 	Text     string `json:"text,omitempty"`
 	Language `json:"lang,omitempty"`
 	URL      string `json:"url,omitempty"`
@@ -60,19 +60,24 @@ type Languages struct {
 	Languages []Language `json:"languages"`
 }
 
+// Modality fucken modality
+type Modality struct {
+	ID          int64  `json:"id"`
+	Text        string `json:"text,omitempty"`
+	TypeID      int    `json:"type_id,omitempty"`
+	TextID      int    `json:"text_id,omitempty"`
+	StartSymbol int    `json:"start_symbol,omitempty"`
+}
+
+// Modalities ...
+type Modalities struct {
+	Modalities []Modality `json:"modalities"`
+}
+
 // ValidateURL ...
 func (ot *ObjectText) ValidateURL() error {
 	return validation.ValidateStruct(
 		ot,
 		validation.Field(&ot.URL, validation.Required, is.URL),
 	)
-}
-
-// Modality fucken modality
-type Modality struct {
-	ID          int    `json:"id"`
-	Text        string `json:"text,omitempty"`
-	TypeID      int    `json:"type_id,omitempty"`
-	TextID      int    `json:"text_id,omitempty"`
-	StartSymbol int    `json:"start_symbol,omitempty"`
 }

@@ -54,6 +54,11 @@ func (r *ModalityRepository) AddText(objText *model.ObjectText) error {
 			return err
 		}
 	}
+
+	if objText.ID, err = commandTag.LastInsertId(); err != nil {
+		return err
+	}
+
 	return nil
 
 }
@@ -245,7 +250,7 @@ func (r *ModalityRepository) GetPageTexts(texts *model.ObjectTexts) error {
 		if err != nil {
 			return err
 		}
-		objText.ID = r.store.getInt(id)
+		objText.ID = r.store.getInt64(id)
 		objText.Text = r.store.getString(text)
 		objText.URL = r.store.getString(url)
 		objText.Language.Name = r.store.getString(langName)
@@ -267,7 +272,7 @@ func (r *ModalityRepository) GetCurText(text *model.ObjectText) error {
 
 	strSQL := "SELECT it.id, it.object_text, it.url, l.id, l.name FROM input_texts AS it"
 	strSQL += " LEFT JOIN languages AS l ON l.id=it.lang_id"
-	strSQL += " WHERE it.id=$1"
+	strSQL += " WHERE it.id=$1 AND it.active=TRUE"
 
 	stmt, err := r.store.db.Prepare(strSQL)
 	if err != nil {
@@ -281,7 +286,7 @@ func (r *ModalityRepository) GetCurText(text *model.ObjectText) error {
 		return err
 	}
 
-	text.ID = r.store.getInt(id)
+	text.ID = r.store.getInt64(id)
 	text.Text = r.store.getString(objText)
 	text.URL = r.store.getString(url)
 	text.Language.Name = r.store.getString(langName)
@@ -294,8 +299,38 @@ func (r *ModalityRepository) GetCurText(text *model.ObjectText) error {
 // DeleteCurText unactive current text object
 func (r *ModalityRepository) DeleteCurText(textID int) error {
 
+	var err error
+
+	// start transaction
+	tx, err := r.store.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if err := r.deleteCurText(textID, tx); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := r.deleteAllModalitiesCurTextObj(textID, tx); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// commit transaction
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+// deleteCurText unactive current text object
+func (r *ModalityRepository) deleteCurText(textID int, tx *sql.Tx) error {
+
 	strSQL := "UPDATE input_texts SET active=FALSE WHERE id=$1"
-	stmt, err := r.store.db.Prepare(strSQL)
+	stmt, err := tx.Prepare(strSQL)
 	if err != nil {
 		return err
 	}
@@ -313,6 +348,23 @@ func (r *ModalityRepository) DeleteCurText(textID int) error {
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+
+}
+
+// deleteAllModalitiesCurTextObj unactive all modalities from current text object
+func (r *ModalityRepository) deleteAllModalitiesCurTextObj(textID int, tx *sql.Tx) error {
+
+	strSQL := "UPDATE modalities SET active=FALSE WHERE text_id=$1"
+	stmt, err := tx.Prepare(strSQL)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	if _, err := stmt.Exec(textID); err != nil {
+		return err
 	}
 	return nil
 
@@ -379,6 +431,15 @@ func (r *ModalityRepository) UpdateCurText(textNew, textOld *model.ObjectText) e
 // updateObjectText ...
 func (r *ModalityRepository) updateObjectText(textNew *model.ObjectText, tx *sql.Tx) error {
 
+	if count, err := r.getCountOfModalities(textNew.ID); count > 0 || err != nil {
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			return errors.New("text object has modalities, delete them before text changes")
+		}
+	}
+
 	strSQL := "UPDATE input_texts SET object_text=$1 WHERE id=$2"
 	stmt, err := tx.Prepare(strSQL)
 	if err != nil {
@@ -393,7 +454,7 @@ func (r *ModalityRepository) updateObjectText(textNew *model.ObjectText, tx *sql
 	}
 	if countRows, err := commandTag.RowsAffected(); countRows != 1 || err != nil {
 		if countRows != 1 {
-			return errors.New("input_text.text_object id=" + strconv.Itoa(textNew.ID) + " didn`t updated")
+			return errors.New("input_text.text_object id=" + strconv.FormatInt(textNew.ID, 10) + " didn`t updated")
 		}
 		if err != nil {
 			return err
@@ -419,7 +480,7 @@ func (r *ModalityRepository) updateObjectLanguage(textNew *model.ObjectText, tx 
 	}
 	if countRows, err := commandTag.RowsAffected(); countRows != 1 || err != nil {
 		if countRows != 1 {
-			return errors.New("input_text.lang_id id=" + strconv.Itoa(textNew.ID) + " didn`t updated")
+			return errors.New("input_text.lang_id id=" + strconv.FormatInt(textNew.ID, 10) + " didn`t updated")
 		}
 		if err != nil {
 			return err
@@ -445,7 +506,7 @@ func (r *ModalityRepository) updateObjectURL(textNew *model.ObjectText, tx *sql.
 	}
 	if countRows, err := commandTag.RowsAffected(); countRows != 1 || err != nil {
 		if countRows != 1 {
-			return errors.New("input_text.url id=" + strconv.Itoa(textNew.ID) + " didn`t updated")
+			return errors.New("input_text.url id=" + strconv.FormatInt(textNew.ID, 10) + " didn`t updated")
 		}
 		if err != nil {
 			return err
@@ -496,6 +557,9 @@ func (r *ModalityRepository) AddModality(modality *model.Modality) error {
 			return err
 		}
 	}
+	if modality.ID, err = commandTag.LastInsertId(); err != nil {
+		return err
+	}
 	return nil
 
 }
@@ -504,7 +568,7 @@ func (r *ModalityRepository) AddModality(modality *model.Modality) error {
 func (r *ModalityRepository) GetCurModality(modality *model.Modality) error {
 
 	strSQL := "SELECT id, modality_text, type_id, text_id, start_symbol FROM modalities"
-	strSQL += " WHERE id=$1"
+	strSQL += " WHERE id=$1 AND active=TRUE"
 
 	stmt, err := r.store.db.Prepare(strSQL)
 	if err != nil {
@@ -518,13 +582,34 @@ func (r *ModalityRepository) GetCurModality(modality *model.Modality) error {
 		return err
 	}
 
-	modality.ID = r.store.getInt(id)
+	modality.ID = r.store.getInt64(id)
 	modality.Text = r.store.getString(modalText)
 	modality.TypeID = r.store.getInt(typeID)
 	modality.TextID = r.store.getInt(textID)
 	modality.StartSymbol = r.store.getInt(startSymbol)
 
 	return nil
+
+}
+
+// getCountOfModalities get count of modalities from current text object
+func (r *ModalityRepository) getCountOfModalities(textID int64) (int, error) {
+
+	strSQL := "SELECT COUNT(id) FROM modalities"
+	strSQL += " WHERE text_id=$1 AND active=TRUE"
+
+	stmt, err := r.store.db.Prepare(strSQL)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	var count int
+	if err = stmt.QueryRow(textID).Scan(&count); err != nil {
+		return 0, err
+	}
+
+	return count, nil
 
 }
 
@@ -599,7 +684,7 @@ func (r *ModalityRepository) updateModalText(modalNew *model.Modality, tx *sql.T
 	}
 	if countRows, err := commandTag.RowsAffected(); countRows != 1 || err != nil {
 		if countRows != 1 {
-			return errors.New("modality.text id=" + strconv.Itoa(modalNew.ID) + " didn`t updated")
+			return errors.New("modality.text id=" + strconv.FormatInt(modalNew.ID, 10) + " didn`t updated")
 		}
 		if err != nil {
 			return err
@@ -625,7 +710,7 @@ func (r *ModalityRepository) updateModalType(modalNew *model.Modality, tx *sql.T
 	}
 	if countRows, err := commandTag.RowsAffected(); countRows != 1 || err != nil {
 		if countRows != 1 {
-			return errors.New("modality.type_id id=" + strconv.Itoa(modalNew.ID) + " didn`t updated")
+			return errors.New("modality.type_id id=" + strconv.FormatInt(modalNew.ID, 10) + " didn`t updated")
 		}
 		if err != nil {
 			return err
@@ -651,11 +736,87 @@ func (r *ModalityRepository) updateModalStartSymbol(modalNew *model.Modality, tx
 	}
 	if countRows, err := commandTag.RowsAffected(); countRows != 1 || err != nil {
 		if countRows != 1 {
-			return errors.New("modality.start_symbol id=" + strconv.Itoa(modalNew.ID) + " didn`t updated")
+			return errors.New("modality.start_symbol id=" + strconv.FormatInt(modalNew.ID, 10) + " didn`t updated")
 		}
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// DeleteCurModality unactive current modality object
+func (r *ModalityRepository) DeleteCurModality(textID int) error {
+
+	strSQL := "UPDATE modalities SET active=FALSE WHERE id=$1"
+	stmt, err := r.store.db.Prepare(strSQL)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	commandTag, err := stmt.Exec(textID)
+
+	if err != nil {
+		return err
+	}
+	if countRows, err := commandTag.RowsAffected(); countRows != 1 || err != nil {
+		if countRows != 1 {
+			return errors.New("modalities id=" + strconv.Itoa(textID) + " didn`t deleted")
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
+
+// GetAllModalitiesFromTextObject get all modalities from current text object
+func (r *ModalityRepository) GetAllModalitiesFromTextObject(modalities *model.Modalities, textID int64) error {
+
+	strSQL := "SELECT id, modality_text, type_id, text_id, start_symbol FROM modalities"
+	strSQL += " WHERE text_id=$1 AND active=TRUE"
+	strSQL += " ORDER BY start_symbol"
+
+	stmt, err := r.store.db.Prepare(strSQL)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query(textID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	// Iterate through the result set
+	for rows.Next() {
+
+		var id, typeID, textID, startSymbol sql.NullInt64
+		var modalText sql.NullString
+		var modality model.Modality
+
+		var err = rows.Scan(&id, &modalText, &typeID, &textID, &startSymbol)
+		if err != nil {
+			return err
+		}
+
+		modality.ID = r.store.getInt64(id)
+		modality.Text = r.store.getString(modalText)
+		modality.TypeID = r.store.getInt(typeID)
+		modality.TextID = r.store.getInt(textID)
+		modality.StartSymbol = r.store.getInt(startSymbol)
+
+		modalities.Modalities = append(modalities.Modalities, modality)
+	}
+
+	// Any errors encountered by rows.Next or rows.Scan will be returned here
+	if rows.Err() != nil {
+		return err
+	}
+
+	return nil
+
 }
