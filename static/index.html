@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Викина модальность</title>
+  <script src="https://unpkg.com/vue"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script></head>
+<body>
+    <div id="app">
+        <select v-model="selected">
+            <option v-for="lang in langs" v-bind:value="lang.id">{{lang.name}}</option>
+        </select>
+    </br>
+        <textarea v-model="message" placeholder="введите несколько строчек"></textarea>
+    </br>
+        <input type="text" v-model="link" placeholder="введите url"></input>
+    </br>
+        <input type="button" value="Сохранить" class="button" v-on:click="upvote(selected, message, link)"></input>
+    </div>
+    <script>
+        var app = new Vue({
+            el: '#app',
+            data: {
+                langs:[
+                    {name:'RU', id:1},
+                    {name:'EN', id:2}
+                ],
+                selected:1,
+                message: '',
+                link: ''
+            },
+            methods: {
+                upvote(langid, textdata, linkurl) {
+                    //alert(textdata);
+                    axios
+                        .put("http://localhost:8080/text", {"lang":{"id":langid},"text":textdata, "url":linkurl})
+                        .then(response => {
+                        })
+                        .catch(function(e){
+                            this.error = e;
+                        });
+                }
+            }
+        });
+    </script>
+</body>
+</html>
