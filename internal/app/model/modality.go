@@ -74,6 +74,17 @@ type Modalities struct {
 	Modalities []Modality `json:"modalities"`
 }
 
+// StatisticLanguage statistic language from modality in text objects
+type StatisticLanguage struct {
+	Language
+	AVGCount float64 `json:"avg_count"`
+}
+
+// StatisticLanguages statistic languages from modality in text objects
+type StatisticLanguages struct {
+	SatatisticLanguages []StatisticLanguage `json:"statistic_languages"`
+}
+
 // ValidateURL ...
 func (ot *ObjectText) ValidateURL() error {
 	return validation.ValidateStruct(

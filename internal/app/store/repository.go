@@ -18,4 +18,5 @@ type ModalityRepository interface {
 	GetCurModality(*model.Modality) error
 	UpdateCurModality(*model.Modality, *model.Modality) error
 	GetAllModalitiesFromTextObject(*model.Modalities, int64) error
+	GetLangsStatistic(*model.StatisticLanguages, []string) error
 }

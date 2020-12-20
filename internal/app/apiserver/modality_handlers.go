@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -57,8 +58,7 @@ func (s *server) handleLangsGet() gin.HandlerFunc {
 
 		langs := &model.Languages{}
 
-		err := s.store.Modality().GetLangs(langs)
-		if err != nil {
+		if err := s.store.Modality().GetLangs(langs); err != nil {
 			s.respondWithError(ctx, http.StatusBadRequest, err)
 			return
 		}
@@ -347,5 +347,55 @@ func (s *server) handleModalitiesGet() gin.HandlerFunc {
 			s.respondWithError(ctx, http.StatusBadRequest, errors.New("absent params in request"))
 			return
 		}
+	}
+}
+
+// handleStatisticLanguagesGet get statistic lnguages
+func (s *server) handleStatisticLanguagesGet() gin.HandlerFunc {
+
+	type ModalIDs struct {
+		TypeIDs []int64 `json:"type_ids"`
+	}
+
+	return func(ctx *gin.Context) {
+
+		var typeIDs ModalIDs
+		if err := ctx.BindJSON(&typeIDs); err != nil {
+			s.respondWithError(ctx, http.StatusBadRequest, err)
+			return
+		}
+
+		var typeIDsStr []string
+		for _, val := range typeIDs.TypeIDs {
+
+			typeIDsStr = append(typeIDsStr, strconv.FormatInt(val, 10))
+
+		}
+
+		fmt.Println("OK0")
+		var langs model.Languages
+		if err := s.store.Modality().GetLangs(&langs); err != nil {
+			s.respondWithError(ctx, http.StatusUnprocessableEntity, err)
+			return
+		}
+
+		var statLangs model.StatisticLanguages
+		for _, lang := range langs.Languages {
+
+			var statLang model.StatisticLanguage
+			statLang.Language = lang
+			fmt.Println(statLang)
+			statLangs.SatatisticLanguages = append(statLangs.SatatisticLanguages, statLang)
+
+		}
+		fmt.Println("OK2")
+
+		if err := s.store.Modality().GetLangsStatistic(&statLangs, typeIDsStr); err != nil {
+			s.respondWithError(ctx, http.StatusUnprocessableEntity, err)
+			return
+		}
+
+		ctx.JSON(http.StatusOK, &statLangs)
+
 	}
 }

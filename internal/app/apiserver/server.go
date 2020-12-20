@@ -68,6 +68,7 @@ func (s *server) configureRouter() {
 	s.router.DELETE("/modality", s.handleCurModalityDelete())
 	s.router.PATCH("/modality", s.handleModalityUpdate())
 	s.router.GET("/modalities", s.handleModalitiesGet())
+	s.router.POST("/statistic", s.handleStatisticLanguagesGet())
 
 }
 

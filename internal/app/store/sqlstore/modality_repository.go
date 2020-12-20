@@ -820,3 +820,35 @@ func (r *ModalityRepository) GetAllModalitiesFromTextObject(modalities *model.Mo
 	return nil
 
 }
+
+// GetLangsStatistic get statistic modalities from text objects on languages
+func (r *ModalityRepository) GetLangsStatistic(statisticLangs *model.StatisticLanguages, typeIDs []string) error {
+
+	strSQL := "SELECT AVG(a.count_modal) FROM"
+	strSQL += " (SELECT COUNT(m.id) count_modal FROM input_texts AS it"
+	strSQL += " LEFT JOIN modalities as m ON it.id=m.text_id AND m.type_id IN (" + strings.Join(typeIDs, ",") + ") AND m.active=TRUE"
+	strSQL += " WHERE it.lang_id=$1 and it.active=TRUE"
+	strSQL += " GROUP BY it.id) AS a"
+
+	stmt, err := r.store.db.Prepare(strSQL)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for key, lang := range statisticLangs.SatatisticLanguages {
+
+		var avg sql.NullFloat64
+
+		err = stmt.QueryRow(lang.ID).Scan(&avg)
+		if err != nil {
+			return err
+		}
+
+		statisticLangs.SatatisticLanguages[key].AVGCount = r.store.getFloat(avg, 1000)
+
+	}
+
+	return nil
+
+}
