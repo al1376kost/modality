@@ -46,7 +46,7 @@ content-type: application/json
 
 ### get cur text object
 
-GET http://localhost:8080/text?id=1 HTTP/1.1
+GET http://localhost:8080/text?id=2 HTTP/1.1
 
 ### delete cur text object
 
@@ -114,6 +114,7 @@ content-type: application/json
     1,
     2,
     3
+    
   ]
 }
 

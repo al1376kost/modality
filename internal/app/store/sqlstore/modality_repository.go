@@ -66,7 +66,7 @@ func (r *ModalityRepository) AddText(objText *model.ObjectText) error {
 // GetTypes get all types of modality
 func (r *ModalityRepository) GetTypes(types *model.Types) error {
 
-	stmt, err := r.store.db.Prepare("SELECT id, name FROM simple_types")
+	stmt, err := r.store.db.Prepare("SELECT id, name FROM simple_types WHERE active=TRUE")
 	if err != nil {
 		return err
 	}

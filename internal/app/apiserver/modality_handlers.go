@@ -2,7 +2,6 @@ package apiserver
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -372,7 +371,6 @@ func (s *server) handleStatisticLanguagesGet() gin.HandlerFunc {
 
 		}
 
-		fmt.Println("OK0")
 		var langs model.Languages
 		if err := s.store.Modality().GetLangs(&langs); err != nil {
 			s.respondWithError(ctx, http.StatusUnprocessableEntity, err)
@@ -384,11 +382,9 @@ func (s *server) handleStatisticLanguagesGet() gin.HandlerFunc {
 
 			var statLang model.StatisticLanguage
 			statLang.Language = lang
-			fmt.Println(statLang)
 			statLangs.SatatisticLanguages = append(statLangs.SatatisticLanguages, statLang)
 
 		}
-		fmt.Println("OK2")
 
 		if err := s.store.Modality().GetLangsStatistic(&statLangs, typeIDsStr); err != nil {
 			s.respondWithError(ctx, http.StatusUnprocessableEntity, err)
