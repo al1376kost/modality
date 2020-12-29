@@ -1,11 +1,19 @@
 <template>
     <div id="app-modality" @contextmenu="openMenu">
         <mu-row class="bottom-margin">
-            <mu-select v-model="currentLangId" style="width: 100px;">
+            <mu-select v-model="currentLangId" style="width: 100px; margin-right: 30px">
                 <mu-option v-for="lang in allLanguages" :key="lang"
                            :label="lang.name" :value="lang.id">
                 </mu-option>
             </mu-select>
+
+            <div v-if="typeChoice">
+                <mu-text-field v-model="typeChoice.name" type="text" readonly help-text="Выбранная модальность" style="width: 300px;">
+                </mu-text-field>
+
+                <a class="create" @click.prevent="approveAdd" title="подтвердить"><font-awesome-icon icon="check-circle" /></a>
+                <a class="create" @click.prevent="cancelAdd" title="отмена"><font-awesome-icon icon="times-circle" /></a>
+            </div>
         </mu-row>
 
         <mu-row class="bottom-margin">
@@ -19,7 +27,7 @@
 
         <ul id="right-click-menu" tabindex="-1" ref="right" v-if="viewMenu"
             @blur="closeMenu" :style="{top:top, left:left}">
-            <li v-for="type in allTypes" :key="type">
+            <li v-for="type in allTypes" :key="type" @click="chooseType(type); selectHighlightedText()">
                 {{ type.name }}
             </li>
         </ul>
@@ -56,10 +64,10 @@
                 allLanguages: null,
                 currentLangId: null,
 
-                // currentUrl: '',
-
                 editMode: true,
                 fixMode: false,
+
+                // currentUrl: '',
 
                 // result: null,
                 // errResult: null,
@@ -74,6 +82,7 @@
             },
 
             nextText: function () {
+                this.typeChoice = null;
                 this.textString = '';
                 document.getElementsByTagName("textarea")[0].readOnly = false;
                 this.fixMode = false;
@@ -83,6 +92,45 @@
             selectHighlightedText: function () {
                 let txtArea = document.getElementById("txt");
                 this.selectedText = txtArea.value.substring(txtArea.selectionStart, txtArea.selectionEnd);
+                console.log(this.selectedText);
+            },
+
+            chooseType: function (type) {
+                this.typeChoice = type;
+            },
+
+            approveAdd: function () {
+                if (this.typeChoice && this.selectedText) {
+                    let requestData = {
+                        text: this.selectedText,
+                        type_id: this.typeChoice.id,
+                        text_id: null,
+                        start_symbol: null
+                    };
+                    console.log(requestData);
+                    axios.put('/modality', requestData)
+                    .then(response => {
+                        if (response.statuc === 200) {
+                            console.log(response.data);
+                            this.cancelAdd();
+                            // this.result = 'Добавлено успешно';
+                            // const self = this;
+                            // setTimeout(function () {
+                            //     self.result = null;
+                            // }, 2000);
+                        }
+                    })
+                    .catch(response => {
+                        console.log(response);
+                        // this.errResult = 'Ошибка добавления';
+                    })
+                }
+            },
+
+            cancelAdd: function () {
+                // this.errResult = null;
+                this.typeChoice = null;
+                this.selectedText = '';
             },
 
             getLanguages: function () {
@@ -102,12 +150,11 @@
                 .then(response => {
                     if (response.status === 200) {
                         this.allTypes = response.data.types;
-                        console.log(response.data)
                     }
                 })
-            .catch(response => {
-                console.log(response);
-            });
+                .catch(response => {
+                    console.log(response);
+                });
             },
 
             putText: function () {
