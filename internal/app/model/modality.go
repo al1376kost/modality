@@ -63,10 +63,10 @@ type Languages struct {
 // Modality fucken modality
 type Modality struct {
 	ID          int64  `json:"id"`
-	Text        string `json:"text,omitempty"`
-	TypeID      int    `json:"type_id,omitempty"`
-	TextID      int    `json:"text_id,omitempty"`
-	StartSymbol int    `json:"start_symbol,omitempty"`
+	Text        string `json:"text"`
+	TypeID      int    `json:"type_id"`
+	TextID      int    `json:"text_id"`
+	StartSymbol int    `json:"start_symbol"`
 }
 
 // Modalities ...
