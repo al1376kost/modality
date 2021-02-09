@@ -29,7 +29,6 @@
         computed: {
             routes() {
                 let routes = this.$router.options.routes.find(item => item.name === 'mainComponent').children;
-                console.log(routes);
                 return routes;
             }
         }

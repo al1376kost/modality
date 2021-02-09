@@ -1,57 +1,91 @@
 <template>
-    <div id="app-modality" @contextmenu="openMenu">
-        <mu-row class="bottom-margin">
-            <mu-select v-model="currentLangId" style="width: 100px; margin-right: 30px">
-                <mu-option v-for="lang in allLanguages" :key="lang"
-                           :label="lang.name" :value="lang.id">
-                </mu-option>
-            </mu-select>
+    <div id="app-modality" class="app-component">
+        <div class="left-item">
+            <ul class="legend-li" v-if="currentText">
+                <li v-for="type in allTypes" :key="type">
+                    {{ type.name }}
+                </li>
+            </ul>
+        </div>
+        <div class="center-item">
+            <mu-row class="bottom-margin" justify-content="between" align-items="center">
+                <mu-select v-model="currentLangId" style="width: 100px;">
+                    <mu-option v-for="lang in allLanguages" :key="lang"
+                               :label="lang.name" :value="lang.id">
+                    </mu-option>
+                </mu-select>
 
-            <div v-if="typeChoice">
-                <mu-text-field v-model="typeChoice.name" type="text" readonly help-text="Выбранная модальность" style="width: 300px;">
-                </mu-text-field>
+                <mu-text-field v-if="editMode"
+                        class="url-input" v-model="currentUrl" type="text" help-text="URL"></mu-text-field>
+                <a class="url-link" v-if="!editMode" :href="this.currentUrl" target="_blank">{{ this.currentUrl }}</a>
+            </mu-row>
 
-                <a class="create" @click.prevent="approveAdd" title="подтвердить"><font-awesome-icon icon="check-circle" /></a>
-                <a class="create" @click.prevent="cancelAdd" title="отмена"><font-awesome-icon icon="times-circle" /></a>
-            </div>
-        </mu-row>
+            <mu-row class="bottom-margin" @contextmenu="openMenu">
+                <textarea v-model="currentText" id="txt" class="mod-text"></textarea>
+            </mu-row>
 
-        <mu-row class="bottom-margin">
-            <textarea v-model="textString" id="txt" class="mod-text"></textarea>
-        </mu-row>
+            <mu-row class="bottom-margin">
+                <div class="left-part-row">
+                    <span class="red-text">{{errResult}}</span>
+                </div>
+                <div class="right-part-row">
+                    <button v-if="editMode" class="def-button" @click.prevent="fixText">Сохранить</button>
+                </div>
+            </mu-row>
 
-        <mu-row class="bottom-margin">
-            <button v-if="editMode" class="def-button" @click.prevent="fixText">Сохранить</button>
-            <button v-if="fixMode" class="def-button" @click.prevent="nextText">След.</button>
-        </mu-row>
+            <mu-row justify-content="center" align-items="center">
+                <button class="def-button" @click="openTexts=true">Список текстов</button>
+            </mu-row>
 
-        <ul id="right-click-menu" tabindex="-1" ref="right" v-if="viewMenu"
-            @blur="closeMenu" :style="{top:top, left:left}">
-            <li v-for="type in allTypes" :key="type" @click="chooseType(type); selectHighlightedText()">
-                {{ type.name }}
-            </li>
-        </ul>
-<!--        <div v-if="result"><h5>{{result}}</h5></div>-->
-<!--        <div v-if="errResult"><h5 class="orange-text">{{errResult}}</h5></div>-->
+            <ul id="right-click-menu" tabindex="-1" ref="right" v-if="viewMenu"
+                @blur="closeMenu" :style="{top:top, left:left}">
+                <li @click="deleteModalityClick">удалить модальность</li>
+                <li v-for="type in allTypes" :key="type" @click="chooseType(type); selectHighlightedText()">
+                    {{ type.name }}
+                </li>
+            </ul>
+        </div>
+
+<!--        <div class="right-item">-->
+<!--            <mu-row>-->
+<!--                <button class="text-button" @click="openTexts=true">Список текстов</button>-->
+<!--            </mu-row>-->
+<!--        </div>-->
+
+        <text-page-component v-if="openTexts" :open="openTexts"
+                @getText="getText" @addText='nextText' @close="openTexts=false">
+        </text-page-component>
     </div>
 </template>
 
 <script>
-    import axios from 'axios'
+    /* eslint-disable no-unused-vars */
+
+    import axios from 'axios';
+    import $ from 'jquery';
 
     export default {
         name: "modalityComponent",
+        components: {
+            textPageComponent: () => import('./textPageComponent.vue')
+        },
         data: function () {
             return {
-                textString: '',
                 textData: {
                     text: null,
-                    // url: null,
+                    url: null,
                     lang: {
                         id: null
                     }
                 },
                 selectedText: '',
+                selectedModalityStart: null,
+
+                currentText: null,
+                currentUrl: null,
+                currentTextId: null,
+                currentModalities: null,
+                modalitiesObjectArray: null,
 
                 viewMenu: false,
                 top: '0px',
@@ -60,77 +94,129 @@
                 typeChoice: null,
                 allTypes: null,
 
-                // languagesList: null
                 allLanguages: null,
                 currentLangId: null,
 
+                openTexts: false,
+                textHighlighted: false,
+
                 editMode: true,
-                fixMode: false,
+                // fixMode: false,
 
-                // currentUrl: '',
+                modalitiesColors: ['green', 'light-red', 'blue', 'yellow', 'violet', 'gray', 'mint', 'purple', 'ginger',
+                    'peach', 'brown', 'pink', 'light-blue', 'orange', 'red', 'acid-green', 'fluorescent-orange',
+                    'prune'],
 
-                // result: null,
-                // errResult: null,
+                errResult: null,
             }
         },
         methods: {
             fixText: function () {
-                document.getElementById("txt").readOnly = "true";
-                this.editMode = false;
-                this.fixMode = true;
-                this.putText();
+                if (this.currentLangId) {
+                    if (!this.currentTextId) {
+                        // this.fixMode = true;
+                        this.putText();
+                    } else if (this.currentTextId) {
+                        // this.fixMode = true;
+                        this.patchText();
+                    }
+                } else {
+                    this.throwErrorMessage('Выберите язык данного текста');
+                }
             },
 
             nextText: function () {
                 this.typeChoice = null;
-                this.textString = '';
+                this.currentText = null;
+                this.currentUrl = null;
+                this.currentTextId = null;
+                this.currentLangId = null;
+                this.destroyTextHighlight(this.textHighlighted);
                 document.getElementsByTagName("textarea")[0].readOnly = false;
-                this.fixMode = false;
+                // this.fixMode = false;
                 this.editMode = true;
             },
 
             selectHighlightedText: function () {
                 let txtArea = document.getElementById("txt");
                 this.selectedText = txtArea.value.substring(txtArea.selectionStart, txtArea.selectionEnd);
-                console.log(this.selectedText);
+                this.selectedModalityStart = txtArea.selectionStart;
+
             },
 
             chooseType: function (type) {
-                this.typeChoice = type;
+                if (this.currentTextId && !this.editMode) {
+                    this.typeChoice = type;
+                    this.putModality();
+                } else {
+                    this.throwErrorMessage('Сохраните текст');
+                }
+                this.closeMenu();
             },
 
-            approveAdd: function () {
+            checkModalityApposition: function(startSymbol, length) {
+                if(this.modalitiesObjectArray) {
+                    for (let obj of this.modalitiesObjectArray) {
+                        if (startSymbol >= obj.start_symbol &&
+                            startSymbol <= obj.start_symbol + obj.text.length - 1) {
+                            this.deleteModality(obj.id);
+                        } else if (startSymbol <= obj.start_symbol &&
+                            obj.start_symbol <= startSymbol + length) {
+                            this.deleteModality(obj.id);
+                        }
+                    }
+                }
+            },
+
+            putModality: function () {
                 if (this.typeChoice && this.selectedText) {
                     let requestData = {
                         text: this.selectedText,
                         type_id: this.typeChoice.id,
-                        text_id: null,
-                        start_symbol: null
+                        text_id: this.currentTextId,
+                        start_symbol: this.selectedModalityStart
                     };
-                    console.log(requestData);
+                    this.checkModalityApposition(requestData.start_symbol, requestData.text.length - 1);
                     axios.put('/modality', requestData)
                     .then(response => {
-                        if (response.statuc === 200) {
-                            console.log(response.data);
-                            this.cancelAdd();
-                            // this.result = 'Добавлено успешно';
-                            // const self = this;
-                            // setTimeout(function () {
-                            //     self.result = null;
-                            // }, 2000);
+                        if (response.status === 200) {
+                            this.getText(this.currentTextId, false);
+                            this.cancelPutModality();
                         }
                     })
-                    .catch(response => {
-                        console.log(response);
-                        // this.errResult = 'Ошибка добавления';
+                    .catch(error => {
+                        // console.log(error.response.data.error);
+                        this.throwErrorMessage('Ошибка добавления');
                     })
                 }
             },
 
-            cancelAdd: function () {
-                // this.errResult = null;
+            deleteModality: function(id) {
+                axios.delete(`/modality?id=${id}`)
+                .then(response => {
+                    console.log(response);
+                })
+                .catch(error => {
+                    console.log(error.response.data.error);
+                })
+            },
+
+            deleteModalityClick: function() {
+                if (this.selectedModalityStart && this.selectedText) {
+                    this.checkModalityApposition(this.selectedModalityStart, this.selectedText.length - 1);
+                    this.getText(this.currentTextId, false);
+                } else {
+                    console.log(this.selectedModalityStart, this.selectedText)
+                    this.throwErrorMessage('Выберите модальность');
+                }
+                this.closeMenu();
+            },
+
+            cancelPutModality: function () {
+                this.errResult = null;
                 this.typeChoice = null;
-                this.selectedText = '';
+                this.selectedText = null;
+                this.selectedModalityStart = null;
             },
 
             getLanguages: function () {
@@ -140,43 +226,140 @@
                     this.allLanguages = response.data.languages;
                 }
             })
-            .catch(response => {
-                console.log(response);
-            });
+            .catch(error => {
+                console.log(error.response.data.error);
+            })
             },
 
             getTypes: function () {
                 axios.get('/types')
                 .then(response => {
-                    if (response.status === 200) {
-                        this.allTypes = response.data.types;
+                    this.allTypes = response.data.types;
+                })
+                .catch(error => {
+                    console.log(error.response.data.error);
+                })
+            },
+
+            getText: function (textId, isEdit) {
+                this.editMode = false;
+                this.currentLangId = null;
+                axios.get(`text?id=${textId}`)
+                .then(response => {
+                    this.currentText = response.data.text;
+                    this.currentUrl = response.data.url;
+                    this.currentTextId = response.data.id;
+                    this.currentLangId = response.data.lang.id;
+                    if (isEdit) {
+                        this.editMode = true;
                     }
                 })
-                .catch(response => {
-                    console.log(response);
-                });
+                .then(() => {
+                    this.getCurrentTextModalities(textId);
+                })
+                .catch(error => {
+                    console.log(error.response.data.error);
+                })
+            },
+
+            getCurrentTextModalities: function (textId) {
+                axios.get(`modalities?id=${textId}`)
+                .then(response => {
+                    this.modalitiesObjectArray = response.data.modalities;
+                    // this.currentModalities = response.data.modalities.map(o => o.text);
+                })
+                .then(() => {
+                    this.destroyTextHighlight(this.textHighlighted);
+                    let indexArray = this.splitModalitiesByType();
+                    if (indexArray) {
+                        this.highlightText(indexArray);
+                    }
+                })
+                .catch(error => {
+                    console.log(error.response.data.error);
+                })
             },
 
             putText: function () {
                 let requestData = {
-                    text: this.textString,
-                    // url: this.currentUrl,
+                    text: this.currentText,
+                    url: this.currentUrl,
                     lang: {
                         id: this.currentLangId
                     }
                 }
                 axios.put('/text', requestData)
                     .then(response => {
-                      if (response.status === 200) {
-                        console.log(response.data);
-                        console.log('Протокол успешно создан');
-                        // this.result = 'Протокол успешно создан';
-                      }
+                        if (response.status === 200) {
+                            this.currentTextId = response.data.id;
+                            this.fixEditMode();
+                        }
                     })
-                    .catch(response => {
-                      console.log(response);
-                      // this.errResult = response.response.data.error;
+                    .catch(error => {
+                        this.throwErrorMessage(error.response.data.error);
                     });
+            },
+
+            patchText: function () {
+                let requestData = {
+                    id: this.currentTextId,
+                    text: this.currentText,
+                    url: this.currentUrl,
+                    lang: {
+                        id: this.currentLangId
+                    }
+                }
+                axios.patch('/text', requestData)
+                    .then(response => {
+                        this.currentTextId = response.data.id;
+                        this.fixEditMode();
+                    })
+                    .catch(error => {
+                        if (error.response.status === 422) {
+                            if (error.response.data.error !== 'old and new datas is equal') {
+                                this.throwErrorMessage(error.response.data.error);
+                            } else {
+                                this.editMode = false;
+                            }
+                        }
+                    });
+            },
+
+            highlightText: function (highlight) {
+                this.textHighlighted = true;
+                $('.mod-text').highlightWithinTextarea({
+                    highlight: highlight
+                })
+            },
+
+            destroyTextHighlight: function (isHighlighted) {
+                if (isHighlighted) {
+                    $('.mod-text').highlightWithinTextarea('destroy');
+                    this.textHighlighted = false;
+                }
+            },
+
+            splitModalitiesByType: function () {
+                if (this.modalitiesObjectArray) {
+                    let splittedModalitiesArray = [];
+                    let tmpIndexArray = [];
+                    for (let i = 1; i < 19; i++) {
+                        for (let obj of this.modalitiesObjectArray) {
+                            if (obj.type_id === i) {
+                                let lastSymbol = obj.start_symbol + obj.text.length;
+                                tmpIndexArray.push([obj.start_symbol, lastSymbol]);
+                            }
+                        }
+                        splittedModalitiesArray.push(
+                            {
+                                'highlight': tmpIndexArray,
+                                'className': this.modalitiesColors[i - 1]
+                            }
+                        );
+                        tmpIndexArray = [];
+                    }
+                    return splittedModalitiesArray;
+                } else return null
             },
 
             setMenu: function(top, left) {
@@ -205,7 +388,20 @@
                     this.setMenu(e.y, e.x);
                 }.bind(this));
                 e.preventDefault();
-            }
+            },
+
+            throwErrorMessage: function (message) {
+                this.errResult = message;
+                const self = this;
+                    setTimeout(function () {
+                    self.errResult = null;
+                }, 2000);
+            },
+
+            fixEditMode: function () {
+                document.getElementById("txt").readOnly = "true";
+                this.editMode = false;
+            },
         },
         mounted() {
             this.getLanguages();
@@ -215,7 +411,5 @@
 </script>
 
 <style scoped>
-    .bottom-margin {
-        margin-bottom: 25px;
-    }
+
 </style>
